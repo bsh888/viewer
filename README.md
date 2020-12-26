@@ -34,12 +34,12 @@
 1.  本安装仅限于采用编译后的可执行程序，适用于小白用户，深度用户可以编译源码，设置修改源码安装。[可执行程序下载地址](https://pan.baidu.com/s/1VQ0d8__OCu6dc1ZkIameTg) 提取码: eufq
 2.  ##### Mac 用户安装 ImageMagick-7.0.8-mac.gz、ffmpeg-4.1-mac.zip 解压缩后设置环境变量：
     ```bash
-    ImageMagick:  
+    # ImageMagick:  
     export MAGICK_HOME="/server/ImageMagick-7.0.8"  
     export PATH="$MAGICK_HOME/bin:$PATH"  
     export DYLD_LIBRARY_PATH="$MAGICK_HOME/lib/" 
 
-    FFmpeg:  
+    # FFmpeg:  
     export FFMPEG_HOME="/server/ffmpeg-4.1"  
     export PATH="$FFMPEG_HOME:$PATH"
     ```
@@ -49,11 +49,25 @@
     c.  在新的页面中，点击左侧导航栏中的“高级系统设置”  
     d.  在弹出的页面中， 点击下部的“环境变量”按钮。弹出环境变量的管理页面  
     e.  在环境变量的管理页面中，在下部列表框中找到Path变量， 单击选中， 然后点击下面的“编辑”按钮  
-    f.  弹出的页面有两个输入框，在“变量值”输入框的开头添加你要增加的路径，格式为;全路径，即分号加路径：C:\ffmpeg-4.1-win64-static\bin;C:\Program Files....  
+    f.  弹出的页面有两个输入框，在“变量值”输入框的开头添加你要增加的路径，格式为;全路径，即分号加路径：
+    ```bash
+    C:\ffmpeg-4.1-win64-static\bin;C:\Program Files....  
+    ```
 3.  非 Windows 系统需要安装微软雅黑字体，只需要复制 viewer/tools/msyh.ttc 到字体目录，如 Mac 系统是：/System/Library/Fonts/msyh.ttc ，修改 viewer/tools/deal_pic_video.sh 中的 FONT_MSYH 值即可
-4.  复制手机中的图片视频目录到移动端硬盘中，复制 Mac、Linux用户复制 viewer/tools/deal_pic_video.sh 文件，Windows 用户复制 viewer/tools/deal_pic_video.bat 文件，和图片视频目录平级，Mac、Linux用户执行：./deal_pic_video.sh Windows 用户双击deal_pic_video.bat 运行。最终会生成 dealpics、dealvideos、sourcepics、sourcevideos 四个目录，**注意：脚本可以重复执行，文件不会被重复处理。**
+4.  复制手机中的图片视频目录到移动端硬盘中，复制 Mac、Linux用户复制 viewer/tools/deal_pic_video.sh 文件，Windows 用户复制 viewer/tools/deal_pic_video.bat 文件，和图片视频目录平级，Mac、Linux用户执行：
+```bash
+./deal_pic_video.sh
+```
+Windows 用户双击deal_pic_video.bat 运行。最终会生成 dealpics、dealvideos、sourcepics、sourcevideos 四个目录，**注意：脚本可以重复执行，文件不会被重复处理。**
 5.  将 viewer/viewer 目录复制到移动硬盘中，和 dealpics、dealvideos、sourcepics、sourcevideos 四个目录平级，
-Mac、Linux用户进入 viewer/viewer/bin 目录执行：./viewer-mac 。Windows 用户调出 CMD 窗口，进入 viewer/viewer/bin 目录执行：./viewer.exe 。
+Mac、Linux用户进入 viewer/viewer/bin 目录执行：
+```bash
+./viewer-mac
+```
+Windows 用户调出 CMD 窗口，进入 viewer/viewer/bin 目录执行：
+```bash
+./viewer.exe
+```
 6.  说明：后端配置文件路径：viewer/viewer/bin/config.yaml 可以修改运行端口：port: 8081 ，其他的不建议修改；前端配置文件路径：viewer/viewer/static/config.js **需要修改一下 IP 地址 apiHost: 'http://{IP}:8081/' ，这个 IP 是第五步运行服务时输出的“访问地址:”中的IP，本例为：192.168.3.101**
 7.  然后家中的所有设备，只要有浏览器应用的都可以访问，如本例：  
 a.  初始化数据库表，浏览器输入：http://192.168.3.101:8081/db/table  
@@ -62,7 +76,21 @@ c.  在浏览器输入： http://192.168.3.101:8081/viewer/ 即可浏览移动�
 
 #### 深度用户使用
 
-1.  前端构建：cd src/frontend && npm i && cd .. && make dev
-2.  后端构建：cd src && make mac
+1.  前端构建：
+```bash
+cd src/frontend
+npm i
+cd ..
+make dev
+```
+2.  后端构建：
+```bash
+cd src
+make mac
+```
 3.  浏览器访问：http://localhost:8080
-4.  交叉编译：docker pull karalabe/xgo-latest ; go get github.com/karalabe/xgo
+4.  交叉编译：
+```bash
+docker pull karalabe/xgo-latest
+go get github.com/karalabe/xgo
+```
