@@ -15,9 +15,7 @@
 #### 效果图
 
 ##### 手机端访问效果：
-<center class="half">
-    <img src="https://github.com/bsh888/viewer/blob/master/assets/mobile-1.jpeg" width="410px" /><img src="https://github.com/bsh888/viewer/blob/master/assets/mobile-2.jpeg" width="410px" />
-</center>
+<img src="https://github.com/bsh888/viewer/blob/master/assets/mobile-1.jpeg" width="410px" /><img src="https://github.com/bsh888/viewer/blob/master/assets/mobile-2.jpeg" width="410px" />
 
 ##### Pad端访问效果：
 <center class="half">
