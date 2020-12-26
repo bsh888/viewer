@@ -18,15 +18,11 @@
 <img src="https://github.com/bsh888/viewer/blob/master/assets/mobile-1.jpeg" width="410px" /><img src="https://github.com/bsh888/viewer/blob/master/assets/mobile-2.jpeg" width="410px" />
 
 ##### Pad端访问效果：
-<center class="half">
-    <img src="https://github.com/bsh888/viewer/blob/master/assets/pad-1.jpeg" width="270px" /><img src="https://github.com/bsh888/viewer/blob/master/assets/pad-2.jpeg" width="270px" /><img src="https://github.com/bsh888/viewer/blob/master/assets/pad-3.jpeg" width="270px" />
-</center>
+<img src="https://github.com/bsh888/viewer/blob/master/assets/pad-1.jpeg" width="270px" /><img src="https://github.com/bsh888/viewer/blob/master/assets/pad-2.jpeg" width="270px" /><img src="https://github.com/bsh888/viewer/blob/master/assets/pad-3.jpeg" width="270px" />
 
 ##### 程序说明：
-<center class="half">
-    <img src="https://github.com/bsh888/viewer/blob/master/assets/pro-dir.png" width="410px" /><img src="https://github.com/bsh888/viewer/blob/master/assets/run.png" width="410px" />
-    <img src="https://github.com/bsh888/viewer/blob/master/assets/yingpan-dir.png" width="410px" /><img src="https://github.com/bsh888/viewer/blob/master/assets/yingpan.jpeg" width="410px" />
-</center>
+<img src="https://github.com/bsh888/viewer/blob/master/assets/pro-dir.png" width="410px" /><img src="https://github.com/bsh888/viewer/blob/master/assets/run.png" width="410px" />
+<img src="https://github.com/bsh888/viewer/blob/master/assets/yingpan-dir.png" width="410px" /><img src="https://github.com/bsh888/viewer/blob/master/assets/yingpan.jpeg" width="410px" />
 
 #### 安装及使用教程
 
