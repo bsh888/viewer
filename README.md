@@ -88,6 +88,7 @@ make mac
 ```bash
 docker pull karalabe/xgo-latest
 go get github.com/karalabe/xgo
+cd src
 make mac
 make amd
 make arm
