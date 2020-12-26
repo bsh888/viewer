@@ -2,7 +2,7 @@
 
 #### 介绍
 随着移动设备拍照、录制视频越来越多，设备空间不足，需要定时备份出来，那么问题来了：存储到大硬盘里，如何能快速地、随时随地查看呢？
-最好能同时在任何设备，如手机、平板、电视上都可以浏览，本应用完美的解决了这些痛点，欢迎下载使用^_^
+最好能同时在任何设备，如手机、平板、电视上都可以浏览，本应用完美的解决了这些痛点，欢迎下载使用
 
 #### 实现思路
 
@@ -12,10 +12,28 @@
 4.  用 Vue 实现前端 H5 程序，实现缩略图预览，对于图片，点击展示原图，对于视频，点击播放原视频
 5.  将家庭成员手机里的图片、视频存入一个很大的移动硬盘里，运行处理脚本，启动后端程序，借助家里的 WIFI 网络，可以在各个设备的浏览器查看
 
+#### 效果图
+
+##### 手机端访问效果：
+![image](https://github.com/bsh888/viewer/blob/master/assets/mobile-1.jpeg)
+![image](https://github.com/bsh888/viewer/blob/master/assets/mobile-2.jpeg)
+
+##### Pad端访问效果：
+![image](https://github.com/bsh888/viewer/blob/master/assets/pad-1.jpeg)
+![image](https://github.com/bsh888/viewer/blob/master/assets/pad-2.jpeg)
+![image](https://github.com/bsh888/viewer/blob/master/assets/pad-3.jpeg)
+
+##### 程序说明：
+![image](https://github.com/bsh888/viewer/blob/master/assets/pro-dir.png)
+![image](https://github.com/bsh888/viewer/blob/master/assets/run.png)
+![image](https://github.com/bsh888/viewer/blob/master/assets/yingpan-dir.png)
+![image](https://github.com/bsh888/viewer/blob/master/assets/yingpan.jpeg)
+
 #### 安装及使用教程
 
 1.  本安装仅限于采用编译后的可执行程序，适用于小白用户，深度用户可以编译源码，设置修改源码安装。[可执行程序下载地址](https://pan.baidu.com/s/1VQ0d8__OCu6dc1ZkIameTg) 提取码: eufq
 2.  ##### Mac 用户安装 ImageMagick-7.0.8-mac.gz、ffmpeg-4.1-mac.zip 解压缩后设置环境变量：
+    ```bash
     ImageMagick:  
     export MAGICK_HOME="/server/ImageMagick-7.0.8"  
     export PATH="$MAGICK_HOME/bin:$PATH"  
@@ -24,6 +42,7 @@
     FFmpeg:  
     export FFMPEG_HOME="/server/ffmpeg-4.1"  
     export PATH="$FFMPEG_HOME:$PATH"
+    ```
     #####  Windows 用户安装 ImageMagick-7.0.8-27-Q16-x64-dll.exe、ffmpeg-4.1-win64-static.zip FFmpeg需要设置环境变量：
     a.  点击屏幕底部菜单栏中的“计算机”图标  
     b.  在弹出的窗口中点击顶部的“计算机”标签，然后在出现的菜单中点击“系统属性”选项  
@@ -36,7 +55,10 @@
 5.  将 viewer/viewer 目录复制到移动硬盘中，和 dealpics、dealvideos、sourcepics、sourcevideos 四个目录平级，
 Mac、Linux用户进入 viewer/viewer/bin 目录执行：./viewer-mac 。Windows 用户调出 CMD 窗口，进入 viewer/viewer/bin 目录执行：./viewer.exe 。
 6.  说明：后端配置文件路径：viewer/viewer/bin/config.yaml 可以修改运行端口：port: 8081 ，其他的不建议修改；前端配置文件路径：viewer/viewer/static/config.js **需要修改一下 IP 地址 apiHost: 'http://{IP}:8081/' ，这个 IP 是第五步运行服务时输出的“访问地址:”中的IP，本例为：192.168.3.101**
-7.  然后家中的所有设备，只要有浏览器应用的都可以访问，如本例，在浏览器输入： http://192.168.3.101:8081/viewer/ 即可浏览移动端硬盘中所有图片及视频
+7.  然后家中的所有设备，只要有浏览器应用的都可以访问，如本例：  
+a.  初始化数据库表，浏览器输入：http://192.168.3.101:8081/db/table  
+b.  初始化数据，浏览器输入：http://192.168.3.101:8081/db/data 
+c.  在浏览器输入： http://192.168.3.101:8081/viewer/ 即可浏览移动端硬盘中所有图片及视频
 
 #### 深度用户使用
 
@@ -44,6 +66,3 @@ Mac、Linux用户进入 viewer/viewer/bin 目录执行：./viewer-mac 。Windows
 2.  后端构建：cd src && make mac
 3.  浏览器访问：http://localhost:8080
 4.  交叉编译：docker pull karalabe/xgo-latest ; go get github.com/karalabe/xgo
-
-#### 效果图
-
