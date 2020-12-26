@@ -1,0 +1,9 @@
+listen: 0.0.0.0
+port: 8081
+static: ../static
+configjs: ../static/config.js
+dealpics: ../../dealpics
+dealvideos: ../../dealvideos
+sourcepics: ../../sourcepics
+sourcevideos: ../../sourcevideos
+dbfile: ./file.db
