@@ -1,0 +1,25 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+.DS_Store
+deal_pic_video
+dealpics
+dealvideos
+viewer
+sourcepics
+sourcevideos
+src/frontend/node_modules
+src/frontend/yarn.lock
+src/frontend/package-lock.json
+src/backend/file.db
+src/backend/go.sum
