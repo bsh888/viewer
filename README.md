@@ -15,19 +15,19 @@
 #### 效果图
 
 ##### 手机端访问效果：
-![image](https://github.com/bsh888/viewer/blob/master/assets/mobile-1.jpeg)
-![image](https://github.com/bsh888/viewer/blob/master/assets/mobile-2.jpeg)
+<img src="https://github.com/bsh888/viewer/blob/master/assets/mobile-1.jpeg" width="410px">
+<img src="https://github.com/bsh888/viewer/blob/master/assets/mobile-2.jpeg" width="410px">
 
 ##### Pad端访问效果：
-![image](https://github.com/bsh888/viewer/blob/master/assets/pad-1.jpeg)
-![image](https://github.com/bsh888/viewer/blob/master/assets/pad-2.jpeg)
-![image](https://github.com/bsh888/viewer/blob/master/assets/pad-3.jpeg)
+<img src="https://github.com/bsh888/viewer/blob/master/assets/pad-1.jpeg" width="270px">
+<img src="https://github.com/bsh888/viewer/blob/master/assets/pad-2.jpeg" width="270px">
+<img src="https://github.com/bsh888/viewer/blob/master/assets/pad-3.jpeg" width="270px">
 
 ##### 程序说明：
-![image](https://github.com/bsh888/viewer/blob/master/assets/pro-dir.png)
-![image](https://github.com/bsh888/viewer/blob/master/assets/run.png)
-![image](https://github.com/bsh888/viewer/blob/master/assets/yingpan-dir.png)
-![image](https://github.com/bsh888/viewer/blob/master/assets/yingpan.jpeg)
+<img src="https://github.com/bsh888/viewer/blob/master/assets/pro-dir.png" width="410px">
+<img src="https://github.com/bsh888/viewer/blob/master/assets/run.png" width="410px">
+<img src="https://github.com/bsh888/viewer/blob/master/assets/yingpan-dir.png" width="410px">
+<img src="https://github.com/bsh888/viewer/blob/master/assets/yingpan.jpeg" width="410px">
 
 #### 安装及使用教程
 
@@ -93,4 +93,8 @@ make mac
 ```bash
 docker pull karalabe/xgo-latest
 go get github.com/karalabe/xgo
+make mac
+make amd
+make arm
+make win
 ```
