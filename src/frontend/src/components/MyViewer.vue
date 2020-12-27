@@ -38,12 +38,12 @@
         </van-cell>
       </van-cell-group>
     </van-radio-group>
-    <van-field v-model="sPage" center clearable label="跳转的页数" :placeholder="setPagePlaceholder">
+    <van-field v-model="sPage" center clearable label="跳转的页数" type="digit" :placeholder="setPagePlaceholder">
       <template #button>
         <van-button size="small" type="primary" @click="setPage">跳转</van-button>
       </template>
     </van-field>
-    <van-field v-model="sPerPage" center clearable label="每页记录数" :placeholder="setPerPagePlaceholder">
+    <van-field v-model="sPerPage" center clearable label="每页记录数" type="digit" :placeholder="setPerPagePlaceholder">
       <template #button>
         <van-button size="small" type="primary" @click="setPerPage">设置</van-button>
       </template>
@@ -82,6 +82,16 @@ Vue.use(Cell)
 
 import moment from 'moment'
 
+const PER_PAGE = window.CONFIG && window.CONFIG.perPage || 20
+
+let ls = window.localStorage
+
+let lsPage = ls.getItem('viewer:MyViewer:page')
+lsPage = (lsPage ? JSON.parse(lsPage) : 1);
+
+let lsPerPage = ls.getItem('viewer:MyViewer:perpage')
+lsPerPage = (lsPerPage ? JSON.parse(lsPerPage) : PER_PAGE);
+
 // create an axios instance
 const service = axios.create({
   baseURL: window.CONFIG && window.CONFIG.apiHost || 'http://127.0.0.1:8081/',
@@ -115,8 +125,6 @@ service.interceptors.response.use(
     return Promise.reject(error)
   }
 )
-
-const PER_PAGE = window.CONFIG && window.CONFIG.perPage || 20
 
 export default {
   name: 'MyViewer',
@@ -175,52 +183,56 @@ export default {
     },
 
     changePage(page) {
-      this.getPicFileList(page)
+      ls.setItem('viewer:MyViewer:page', JSON.stringify(page))
+      this.getFileList(page)
     },
 
     setPage() {
       if (!this.sPage) {
-        this.getPicFileList()
+        this.getFileList()
         return
       }
       this.sPage = parseInt(this.sPage)
       if (this.sPage > 0 && this.sPage <= this.pages) {
-        this.getPicFileList(this.sPage)
+        this.getFileList(this.sPage)
       }
     },
 
     setPerPage() {
       if (!this.sPerPage) {
-        this.perPage = PER_PAGE
-        this.getPicFileList()
+        this.perPage = lsPerPage
+        this.getFileList(this.page, this.perPage)
         return
       }
       this.sPerPage = parseInt(this.sPerPage)
       if (this.sPerPage > 0) {
         this.perPage = this.sPerPage
-        this.getPicFileList()
+        ls.setItem('viewer:MyViewer:perpage', JSON.stringify(this.perPage))
+        this.getFileList(this.page, this.perPage)
       }
     },
 
     changeType() {
-      this.getPicFileList()
+      this.getFileList()
     },
 
     setMinDateTime() {
       this.startDateTime = moment(this.minDateTime).format('YYYY-MM-DD HH:mm:ss')
       this.showMinDateTime = false
-      this.getPicFileList()
+      this.getFileList()
     },
 
     setMaxDateTime() {
       this.endDateTime = moment(this.maxDateTime).format('YYYY-MM-DD HH:mm:ss')
       this.showMaxDateTime = false
-      this.getPicFileList()
+      this.getFileList()
     },
 
     // 获取文件列表
-    getPicFileList(page) {
-      this.page = page || 1
+    getFileList(page, perPage) {
+      this.page = page || lsPage
+      this.perPage = perPage || lsPerPage
+
       let query = {
         'type': this.mType,
         'min-date-time': this.startDateTime,
@@ -241,6 +253,12 @@ export default {
           this.setPerPagePlaceholder = '请输入1-' + this.records + '的数字'
           this.images = []
           if (response.data.count == 0) {
+            return
+          }
+          if (!response.data.list) {
+            ls.removeItem('viewer:MyViewer:page')
+            ls.removeItem('viewer:MyViewer:perpage')
+            this.getFileList(1, PER_PAGE)
             return
           }
           for (let i = 0; i < response.data.list.length; i++) {
@@ -276,7 +294,12 @@ export default {
         this.dealVideos = response.data.dealvideos
         this.sourcePics = response.data.sourcepics
         this.sourceVideos = response.data.sourcevideos
-        this.getPicFileList()
+
+        this.getFileList(lsPage, lsPerPage)
+        setTimeout(() => {
+          this.page = lsPage
+          this.perPage = lsPerPage
+        }, 300)
       }
     })
   }
