@@ -9,8 +9,12 @@
     >
       <template slot-scope="scope">
         <template v-for="(image, index) in scope.images">
-          <img v-if="image.type == 'P'" class="image" :key="index" :src="image.thumbnail" :data-source="image.source" :alt="image.title">
-          <img v-if="image.type == 'V'" class="image" :key="index" :src="image.thumbnail" :alt="image.title" @click="playVideo(image)">
+          <div class="file" :key="index">
+            <van-icon name="like" class="like" color="orangered" size="25px" @click="likeFile(image)" />
+            <van-icon name="close" class="close" color="lightyellow" size="25px" @click="delFile(image)" />
+            <img v-if="image.type == 'P'" class="image" :key="index" :src="image.thumbnail" :data-source="image.source" :alt="image.title">
+            <img v-if="image.type == 'V'" class="image" :key="index" :src="image.thumbnail" :alt="image.title" @click="playVideo(image)">
+          </div>
         </template>
       </template>
     </viewer>
@@ -68,7 +72,8 @@ import Vue from 'vue'
 Vue.use(Viewer)
 
 import 'vant/lib/index.css'
-import { NoticeBar, Pagination, Field, Button, Popup, DatetimePicker, RadioGroup, Radio, CellGroup, Cell } from 'vant'
+import { Icon, NoticeBar, Pagination, Field, Button, Popup, DatetimePicker, RadioGroup, Radio, CellGroup, Cell } from 'vant'
+Vue.use(Icon)
 Vue.use(NoticeBar)
 Vue.use(Pagination)
 Vue.use(Field)
@@ -304,6 +309,7 @@ export default {
             }
             
             this.images.push({
+              id: response.data.list[i].id,
               type: mType,
               title: response.data.list[i].datetime,
               thumbnail: thumbnail,
@@ -312,6 +318,14 @@ export default {
           }
         }
       })
+    },
+
+    likeFile(image) {
+      console.log('like', image)
+    },
+
+    delFile(image) {
+      console.log('del', image)
     }
   },
   mounted() {
@@ -341,6 +355,20 @@ export default {
 </script>
 
 <style>
+.file {
+  position: relative;
+  display: inline-block;
+}
+.like {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+}
+.close {
+  position: absolute;
+  right: 8px;
+  bottom: 16px;
+}
 .image {
   height: 200px;
   cursor: pointer;
