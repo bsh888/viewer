@@ -86,11 +86,20 @@ const PER_PAGE = window.CONFIG && window.CONFIG.perPage || 20
 
 let ls = window.localStorage
 
+let lsMType = ls.getItem('viewer:MyViewer:mType')
+lsMType = (lsMType ? JSON.parse(lsMType) : '')
+
 let lsPage = ls.getItem('viewer:MyViewer:page')
-lsPage = (lsPage ? JSON.parse(lsPage) : 1);
+lsPage = (lsPage ? JSON.parse(lsPage) : 1)
 
 let lsPerPage = ls.getItem('viewer:MyViewer:perpage')
-lsPerPage = (lsPerPage ? JSON.parse(lsPerPage) : PER_PAGE);
+lsPerPage = (lsPerPage ? JSON.parse(lsPerPage) : PER_PAGE)
+
+let lsStartDateTime = ls.getItem('viewer:MyViewer:startDateTime')
+lsStartDateTime = (lsStartDateTime ? JSON.parse(lsStartDateTime) : '')
+
+let lsEndDateTime = ls.getItem('viewer:MyViewer:endDateTime')
+lsEndDateTime = (lsEndDateTime ? JSON.parse(lsEndDateTime) : '')
 
 // create an axios instance
 const service = axios.create({
@@ -183,62 +192,85 @@ export default {
     },
 
     changePage(page) {
+      this.page = page
       ls.setItem('viewer:MyViewer:page', JSON.stringify(page))
-      this.getFileList(page)
+      this.getFileList()
     },
 
     setPage() {
       if (!this.sPage) {
+        this.initSet()
         this.getFileList()
         return
       }
       this.sPage = parseInt(this.sPage)
       if (this.sPage > 0 && this.sPage <= this.pages) {
-        this.getFileList(this.sPage)
+        this.changePage(this.sPage)
       }
     },
 
     setPerPage() {
       if (!this.sPerPage) {
-        this.perPage = lsPerPage
-        this.getFileList(this.page, this.perPage)
+        this.initSet()
+        this.getFileList()
         return
       }
       this.sPerPage = parseInt(this.sPerPage)
       if (this.sPerPage > 0) {
+        this.initSet()
         this.perPage = this.sPerPage
         ls.setItem('viewer:MyViewer:perpage', JSON.stringify(this.perPage))
-        this.getFileList(this.page, this.perPage)
+        this.getFileList()
       }
     },
 
+    initSet() {
+      this.mType = ''
+      this.page = 1
+      this.perPage = PER_PAGE
+      this.startDateTime = ''
+      this.endDateTime = ''
+
+      ls.removeItem('viewer:MyViewer:mType')
+      ls.removeItem('viewer:MyViewer:page')
+      ls.removeItem('viewer:MyViewer:perpage')
+      ls.removeItem('viewer:MyViewer:startDateTime')
+      ls.removeItem('viewer:MyViewer:endDateTime')
+    },
+
     changeType() {
+      ls.setItem('viewer:MyViewer:mType', JSON.stringify(this.mType))
       this.getFileList()
     },
 
     setMinDateTime() {
       this.startDateTime = moment(this.minDateTime).format('YYYY-MM-DD HH:mm:ss')
+      ls.setItem('viewer:MyViewer:startDateTime', JSON.stringify(this.startDateTime))
       this.showMinDateTime = false
       this.getFileList()
     },
 
     setMaxDateTime() {
       this.endDateTime = moment(this.maxDateTime).format('YYYY-MM-DD HH:mm:ss')
+      ls.setItem('viewer:MyViewer:endDateTime', JSON.stringify(this.endDateTime))
       this.showMaxDateTime = false
       this.getFileList()
     },
 
     // 获取文件列表
-    getFileList(page, perPage) {
-      this.page = page || lsPage
-      this.perPage = perPage || lsPerPage
+    getFileList(mType, page, perPage, startDateTime, endDateTime) {
+      mType = mType || this.mType
+      page = page || this.page
+      perPage = perPage || this.perPage
+      startDateTime = startDateTime || this.startDateTime
+      endDateTime = endDateTime || this.endDateTime
 
       let query = {
-        'type': this.mType,
-        'min-date-time': this.startDateTime,
-        'max-date-time': this.endDateTime,
-        'per-page': this.perPage,
-        'page': this.page
+        'type': mType,
+        'min-date-time': startDateTime,
+        'max-date-time': endDateTime,
+        'per-page': perPage,
+        'page': page
       }
       service({
         url: this.apiHost + 'api/filelist',
@@ -247,8 +279,8 @@ export default {
       }).then(response => {
         if (response.code === 10000 && response.data.count >= 0) {
           this.records = response.data.count
-          this.pageTexts = '总共【' + this.records + '】条记录，每页展示【' + this.perPage + '】条'
-          this.pages = Math.ceil(this.records / this.perPage)
+          this.pageTexts = '总共【' + this.records + '】条记录，每页展示【' + perPage + '】条'
+          this.pages = Math.ceil(this.records / perPage)
           this.setPagePlaceholder = '请输入1-' + this.pages + '的数字'
           this.setPerPagePlaceholder = '请输入1-' + this.records + '的数字'
           this.images = []
@@ -256,9 +288,8 @@ export default {
             return
           }
           if (!response.data.list) {
-            ls.removeItem('viewer:MyViewer:page')
-            ls.removeItem('viewer:MyViewer:perpage')
-            this.getFileList(1, PER_PAGE)
+            this.initSet()
+            this.getFileList()
             return
           }
           for (let i = 0; i < response.data.list.length; i++) {
@@ -295,10 +326,13 @@ export default {
         this.sourcePics = response.data.sourcepics
         this.sourceVideos = response.data.sourcevideos
 
-        this.getFileList(lsPage, lsPerPage)
+        this.getFileList(lsMType, lsPage, lsPerPage, lsStartDateTime, lsEndDateTime)
         setTimeout(() => {
+          this.mType = lsMType
           this.page = lsPage
           this.perPage = lsPerPage
+          this.startDateTime = lsStartDateTime
+          this.endDateTime = lsEndDateTime
         }, 300)
       }
     })
