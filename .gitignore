@@ -19,7 +19,4 @@ viewer
 sourcepics
 sourcevideos
 src/frontend/node_modules
-src/frontend/yarn.lock
-src/frontend/package-lock.json
 src/backend/file.db
-src/backend/go.sum
