@@ -301,6 +301,11 @@ EOF
 
     fileName=${fileName##*/}
 
+    # 微信中的视频获取不到文件修改时间，用date命令获取一下
+    if [[ $createDate == "" ]]; then
+        createDate=`date -r $filePath "+%Y-%m-%dT%H:%M:%S"`
+    fi
+
     if [[ $createDate == "" ]]; then
         echo "fileName:'$fileName' filePath:'$filePath' CON NOT BE DEALED!"
     else
