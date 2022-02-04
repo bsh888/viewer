@@ -10,7 +10,8 @@
       <template slot-scope="scope">
         <template v-for="(image, index) in scope.images">
           <div class="file" :key="index">
-            <van-icon name="like" class="like" color="orangered" size="25px" @click="likeFile(image)" />
+            <van-icon v-if="image.isliked" name="like" class="like" color="orangered" size="25px" @click="likeFile(image)" />
+            <van-icon v-else name="like" class="like" color="white" size="25px" @click="likeFile(image)" />
             <van-icon name="close" class="close" color="lightyellow" size="25px" @click="delFile(image)" />
             <img v-if="image.type == 'P'" class="image" :key="index" :src="image.thumbnail" :data-source="image.source" :alt="image.title">
             <img v-if="image.type == 'V'" class="image" :key="index" :src="image.thumbnail" :alt="image.title" @click="playVideo(image)">
@@ -311,6 +312,7 @@ export default {
             this.images.push({
               id: response.data.list[i].id,
               type: mType,
+              isliked: response.data.list[i].isliked,
               title: response.data.list[i].datetime,
               thumbnail: thumbnail,
               source: source
@@ -321,7 +323,14 @@ export default {
     },
 
     likeFile(image) {
-      console.log('like', image)
+      service({
+        url: '/api/like/' + image.id,
+        method: 'put'
+      }).then(response => {
+        if (response.code === 10000) {
+          this.getFileList()
+        }
+      })
     },
 
     delFile(image) {

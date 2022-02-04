@@ -69,6 +69,7 @@ type (
 		Path     string `json:"path"`
 		Type     string `json:"type"`
 		DateTime string `json:"datetime"`
+		IsLiked  int    `json:"isliked"`
 	}
 )
 
@@ -166,6 +167,7 @@ func (s *Server) InitRouter(h *Handler) *gin.Engine {
 	{
 		apiGroup.GET("/config", h.HandlerApiConfig(s.config))
 		apiGroup.GET("/filelist", h.HandlerApiFileList)
+		apiGroup.PUT("/like/:id", h.HandlerApiLike)
 	}
 
 	return router
@@ -198,6 +200,8 @@ CREATE TABLE IF NOT EXISTS file (
     id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
     path VARCHAR(128) NOT NULL DEFAULT '',
     type CHAR(1) NOT NULL DEFAULT ('P'),
+	isliked TINYINT(3) NOT NULL DEFAULT (0),
+	isdeleted TINYINT(3) NOT NULL DEFAULT (0),
     datetime DATETIME NOT NULL DEFAULT '0000-00-00 00:00:00'
 );
 `
@@ -266,7 +270,7 @@ func (m *Model) FileList(myType, minDateTime, maxDateTime string, page, perPage 
 		perPage = 10
 	}
 	from := (page - 1) * perPage
-	sql = fmt.Sprintf("SELECT id, path, type, datetime FROM file WHERE %s ORDER BY datetime DESC LIMIT %d, %d", where, from, perPage)
+	sql = fmt.Sprintf("SELECT id, path, type, datetime, isliked FROM file WHERE %s ORDER BY datetime DESC LIMIT %d, %d", where, from, perPage)
 	// fmt.Println(sql)
 
 	row, err = m.db.Query(sql)
@@ -276,21 +280,45 @@ func (m *Model) FileList(myType, minDateTime, maxDateTime string, page, perPage 
 	defer row.Close()
 
 	for row.Next() {
-		var id int
+		var id, isliked int
 		var path string
 		var myType string
 		var dateTime string
-		row.Scan(&id, &path, &myType, &dateTime)
+		row.Scan(&id, &path, &myType, &dateTime, &isliked)
 		fileModel := FileModel{
 			ID:       id,
 			Path:     path,
 			Type:     myType,
 			DateTime: dateTime,
+			IsLiked:  isliked,
 		}
 		fileModels = append(fileModels, fileModel)
 	}
 
 	return fileModels, count, nil
+}
+
+// 喜欢
+func (m *Model) Like(id int) (int64, error) {
+	var affectedRows int64
+
+	stmt, err := m.db.Prepare("UPDATE file SET isliked = 1 WHERE id = ?")
+	if err != nil {
+		return affectedRows, err
+	}
+
+	res, err := stmt.Exec(id)
+	if err != nil {
+		return affectedRows, err
+	}
+
+	affectedRows, err = res.RowsAffected()
+
+	if err != nil {
+		return affectedRows, err
+	}
+
+	return affectedRows, nil
 }
 
 // 初始化Handler入口
@@ -456,6 +484,29 @@ func (h *Handler) HandlerApiFileList(c *gin.Context) {
 	r.Data = res
 	if err != nil {
 		r.Code = 10002
+		r.Msg = err.Error()
+		c.JSON(http.StatusOK, r)
+		return
+	}
+
+	c.JSON(http.StatusOK, r)
+	return
+}
+
+// 喜欢
+func (h *Handler) HandlerApiLike(c *gin.Context) {
+	r := Result{
+		Code: 10000,
+		Msg:  "",
+	}
+
+	idStr := c.Param("id")
+	id, _ := strconv.Atoi(idStr)
+	rows, err := h.model.Like(id)
+
+	r.Data = rows
+	if err != nil {
+		r.Code = 10004
 		r.Msg = err.Error()
 		c.JSON(http.StatusOK, r)
 		return
