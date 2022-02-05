@@ -13,8 +13,8 @@
             <van-icon v-if="image.isliked" name="like" class="like" color="orangered" size="25px" @click="likeFile(image)" />
             <van-icon v-else name="like" class="like" color="white" size="25px" @click="likeFile(image)" />
             <van-icon name="close" class="close" color="lightyellow" size="25px" @click="delFile(image)" />
-            <img v-if="image.type == 'P'" class="image" :key="index" :src="image.thumbnail" :data-source="image.source" :alt="image.title">
-            <img v-if="image.type == 'V'" class="image" :key="index" :src="image.thumbnail" :alt="image.title" @click="playVideo(image)">
+            <img class="image" v-if="image.type == 'P'" :key="index" :src="image.thumbnail" :data-source="image.source" :alt="image.title">
+            <img class="image" v-if="image.type == 'V'" :key="index" :src="image.thumbnail" :alt="image.title" @click="playVideo(image)">
           </div>
         </template>
       </template>
@@ -43,6 +43,15 @@
         </van-cell>
       </van-cell-group>
     </van-radio-group>
+    <van-checkbox-group v-model="likeArr" class="MType">
+      <van-cell-group>
+        <van-cell title="显示喜欢" clickable @click="showLike">
+          <template #right-icon>
+            <van-checkbox name="1" ref="checkboxes" />
+          </template>
+        </van-cell>
+      </van-cell-group>
+    </van-checkbox-group>
     <van-field v-model="sPage" center clearable label="跳转的页数" type="digit" :placeholder="setPagePlaceholder">
       <template #button>
         <van-button size="small" type="primary" @click="setPage">跳转</van-button>
@@ -73,7 +82,7 @@ import Vue from 'vue'
 Vue.use(Viewer)
 
 import 'vant/lib/index.css'
-import { Icon, NoticeBar, Pagination, Field, Button, Popup, DatetimePicker, RadioGroup, Radio, CellGroup, Cell } from 'vant'
+import { Icon, NoticeBar, Pagination, Field, Button, Popup, DatetimePicker, RadioGroup, Radio, CellGroup, Cell, Checkbox, CheckboxGroup } from 'vant'
 Vue.use(Icon)
 Vue.use(NoticeBar)
 Vue.use(Pagination)
@@ -85,6 +94,8 @@ Vue.use(RadioGroup)
 Vue.use(Radio)
 Vue.use(CellGroup)
 Vue.use(Cell)
+Vue.use(Checkbox)
+Vue.use(CheckboxGroup)
 
 import moment from 'moment'
 
@@ -94,6 +105,9 @@ let ls = window.localStorage
 
 let lsMType = ls.getItem('viewer:MyViewer:mType')
 lsMType = (lsMType ? JSON.parse(lsMType) : '')
+
+let lsLike = ls.getItem('viewer:MyViewer:like')
+lsLike = (lsLike ? JSON.parse(lsLike) : -1)
 
 let lsPage = ls.getItem('viewer:MyViewer:page')
 lsPage = (lsPage ? JSON.parse(lsPage) : 1)
@@ -109,7 +123,7 @@ lsEndDateTime = (lsEndDateTime ? JSON.parse(lsEndDateTime) : '')
 
 // create an axios instance
 const service = axios.create({
-  baseURL: window.CONFIG && window.CONFIG.apiHost || 'http://127.0.0.1:8081/',
+  baseURL: window.CONFIG && window.CONFIG.apiHost || 'http://192.168.3.111:8081/',
   withCredentials: true, // 跨域请求时发送 cookies
   timeout: 10000 // request timeout
 })
@@ -160,6 +174,8 @@ export default {
       records: 0,
       perPage: PER_PAGE,
       mType: '',
+      like: -1,
+      likeArr: [],
       apiHost: '',
       dealPics: '',
       dealVideos: '',
@@ -232,12 +248,15 @@ export default {
 
     initSet() {
       this.mType = ''
+      this.like = -1
+      this.likeArr = []
       this.page = 1
       this.perPage = PER_PAGE
       this.startDateTime = ''
       this.endDateTime = ''
 
       ls.removeItem('viewer:MyViewer:mType')
+      ls.removeItem('viewer:MyViewer:like')
       ls.removeItem('viewer:MyViewer:page')
       ls.removeItem('viewer:MyViewer:perpage')
       ls.removeItem('viewer:MyViewer:startDateTime')
@@ -246,6 +265,17 @@ export default {
 
     changeType() {
       ls.setItem('viewer:MyViewer:mType', JSON.stringify(this.mType))
+      this.getFileList()
+    },
+
+    showLike() {
+      this.$refs.checkboxes.toggle()
+      if (this.likeArr.length == 0) {
+        this.like = 1
+      } else {
+        this.like = -1
+      }
+      ls.setItem('viewer:MyViewer:like', JSON.stringify(this.like))
       this.getFileList()
     },
 
@@ -264,19 +294,21 @@ export default {
     },
 
     // 获取文件列表
-    getFileList(mType, page, perPage, startDateTime, endDateTime) {
+    getFileList(mType, page, perPage, startDateTime, endDateTime, like) {
       mType = mType || this.mType
       page = page || this.page
       perPage = perPage || this.perPage
       startDateTime = startDateTime || this.startDateTime
       endDateTime = endDateTime || this.endDateTime
+      like = like || this.like
 
       let query = {
         'type': mType,
         'min-date-time': startDateTime,
         'max-date-time': endDateTime,
         'per-page': perPage,
-        'page': page
+        'page': page,
+        'like': like
       }
       service({
         url: this.apiHost + 'api/filelist',
@@ -325,7 +357,8 @@ export default {
     likeFile(image) {
       service({
         url: '/api/like/' + image.id,
-        method: 'put'
+        method: 'put',
+        params: {isliked: image.isliked}
       }).then(response => {
         if (response.code === 10000) {
           this.getFileList()
@@ -349,9 +382,10 @@ export default {
         this.sourcePics = response.data.sourcepics
         this.sourceVideos = response.data.sourcevideos
 
-        this.getFileList(lsMType, lsPage, lsPerPage, lsStartDateTime, lsEndDateTime)
+        this.getFileList(lsMType, lsPage, lsPerPage, lsStartDateTime, lsEndDateTime, lsLike)
         setTimeout(() => {
           this.mType = lsMType
+          this.like = lsLike
           this.page = lsPage
           this.perPage = lsPerPage
           this.startDateTime = lsStartDateTime
@@ -376,13 +410,15 @@ export default {
 .close {
   position: absolute;
   right: 8px;
-  bottom: 16px;
+  top: 8px;
 }
 .image {
-  height: 200px;
+  width: 160px;
+  height: 160px;
   cursor: pointer;
-  margin: 5px;
+  margin: 4px;
   display: inline-block;
+  border-radius: 20px;
 }
 .MType {
   text-align: left;

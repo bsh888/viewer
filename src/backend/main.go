@@ -237,11 +237,14 @@ func (m *Model) InsertFileData(path, myType, datetime string) (id int64, err err
 }
 
 // 获取文件列表
-func (m *Model) FileList(myType, minDateTime, maxDateTime string, page, perPage int) (fileModels []FileModel, count int, err error) {
+func (m *Model) FileList(myType, minDateTime, maxDateTime string, page, perPage, like int) (fileModels []FileModel, count int, err error) {
 	// 条件查询
 	where := "1 = 1"
 	if myType != "" {
 		where = fmt.Sprintf("%s AND type = '%s'", where, myType)
+	}
+	if like != -1 {
+		where = fmt.Sprintf("%s AND isliked = %d", where, like)
 	}
 	if minDateTime != "" {
 		where = fmt.Sprintf("%s AND datetime >= '%s'", where, minDateTime)
@@ -299,15 +302,21 @@ func (m *Model) FileList(myType, minDateTime, maxDateTime string, page, perPage 
 }
 
 // 喜欢
-func (m *Model) Like(id int) (int64, error) {
+func (m *Model) Like(id, isliked int) (int64, error) {
 	var affectedRows int64
 
-	stmt, err := m.db.Prepare("UPDATE file SET isliked = 1 WHERE id = ?")
+	if isliked == 0 {
+		isliked = 1
+	} else {
+		isliked = 0
+	}
+
+	stmt, err := m.db.Prepare("UPDATE file SET isliked = ? WHERE id = ?")
 	if err != nil {
 		return affectedRows, err
 	}
 
-	res, err := stmt.Exec(id)
+	res, err := stmt.Exec(isliked, id)
 	if err != nil {
 		return affectedRows, err
 	}
@@ -463,14 +472,16 @@ func (h *Handler) HandlerApiFileList(c *gin.Context) {
 	}
 
 	myType := c.Query("type")
+	like := c.Query("like")
 	minDateTime := c.Query("min-date-time")
 	maxDateTime := c.Query("max-date-time")
 	page := c.Query("page")
 	perPage := c.Query("per-page")
 	pageInt, _ := strconv.Atoi(page)
 	perPageInt, _ := strconv.Atoi(perPage)
+	likeInt, _ := strconv.Atoi(like)
 
-	fileModels, count, err := h.model.FileList(myType, minDateTime, maxDateTime, pageInt, perPageInt)
+	fileModels, count, err := h.model.FileList(myType, minDateTime, maxDateTime, pageInt, perPageInt, likeInt)
 
 	type Res struct {
 		Count int         `json:"count"`
@@ -502,7 +513,10 @@ func (h *Handler) HandlerApiLike(c *gin.Context) {
 
 	idStr := c.Param("id")
 	id, _ := strconv.Atoi(idStr)
-	rows, err := h.model.Like(id)
+	islikedStr := c.Query("isliked")
+	isliked, _ := strconv.Atoi(islikedStr)
+
+	rows, err := h.model.Like(id, isliked)
 
 	r.Data = rows
 	if err != nil {
