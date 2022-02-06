@@ -46,8 +46,8 @@ type (
 	}
 
 	Model struct {
-		db   *sql.DB
-		file string
+		db     *sql.DB
+		config *Config
 	}
 
 	Handler struct {
@@ -170,6 +170,7 @@ func (s *Server) InitRouter(h *Handler) *gin.Engine {
 		apiGroup.GET("/filelist", h.HandlerApiFileList)
 		apiGroup.PUT("/like/:id", h.HandlerApiLike)
 		apiGroup.PUT("/delete/:id", h.HandlerApiDelete)
+		apiGroup.DELETE("/real-delete/:id", h.HandlerApiRealDelete)
 	}
 
 	return router
@@ -177,7 +178,7 @@ func (s *Server) InitRouter(h *Handler) *gin.Engine {
 
 // 打开数据库
 func (m *Model) OpenDB() (err error) {
-	db, err := sql.Open("sqlite3", m.file)
+	db, err := sql.Open("sqlite3", m.config.DBFile)
 	if err != nil {
 		return err
 	}
@@ -365,10 +366,49 @@ func (m *Model) Delete(id, isdeleted int) (int64, error) {
 	return affectedRows, nil
 }
 
+// 真删除
+func (m *Model) RealDelete(toID int) (int64, error) {
+	var affectedRows int64
+
+	var id, isliked, isdeleted int
+	var path string
+	var myType string
+	var dateTime string
+
+	err := m.db.QueryRow("SELECT id, path, type, datetime, isliked, isdeleted FROM file WHERE id = ?", toID).Scan(&id, &path, &myType, &dateTime, &isliked, &isdeleted)
+	if err != nil {
+		return affectedRows, err
+	}
+
+	if id == 0 {
+		return affectedRows, errors.New("没有此记录")
+	}
+
+	fmt.Println(id, myType, path, *m.config)
+
+	// stmt, err := m.db.Prepare("DELETE FROM file WHERE id = ?")
+	// if err != nil {
+	// 	return affectedRows, err
+	// }
+
+	// res, err := stmt.Exec(id)
+	// if err != nil {
+	// 	return affectedRows, err
+	// }
+
+	// affectedRows, err = res.RowsAffected()
+
+	// if err != nil {
+	// 	return affectedRows, err
+	// }
+
+	return affectedRows, nil
+}
+
 // 初始化Handler入口
 func NewHandler(c *Config) *Handler {
 	model := &Model{
-		file: c.DBFile,
+		config: c,
 	}
 	model.OpenDB()
 
@@ -584,6 +624,30 @@ func (h *Handler) HandlerApiDelete(c *gin.Context) {
 	r.Data = rows
 	if err != nil {
 		r.Code = 10005
+		r.Msg = err.Error()
+		c.JSON(http.StatusOK, r)
+		return
+	}
+
+	c.JSON(http.StatusOK, r)
+	return
+}
+
+// 真删除
+func (h *Handler) HandlerApiRealDelete(c *gin.Context) {
+	r := Result{
+		Code: 10000,
+		Msg:  "",
+	}
+
+	idStr := c.Param("id")
+	id, _ := strconv.Atoi(idStr)
+
+	rows, err := h.model.RealDelete(id)
+
+	r.Data = rows
+	if err != nil {
+		r.Code = 10006
 		r.Msg = err.Error()
 		c.JSON(http.StatusOK, r)
 		return

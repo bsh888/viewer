@@ -3,27 +3,37 @@
     <!-- <viewer class="images" :images="images" :options="options">
       <img class="image" v-for="(image, index) in images" :src="image.thumbnail" :data-source="image.source" :key="index">
     </viewer> -->
-    <viewer :options="options" :images="images"
-      @inited="inited"
-      class="viewer" ref="viewer"
-    >
-      <template slot-scope="scope">
-        <template v-for="(image, index) in scope.images">
-          <div class="file" :key="index">
-            <van-icon v-if="image.isliked" name="like" class="like" color="orangered" size="25px" @click="likeFile(image)" />
-            <van-icon v-else name="like" class="like" color="white" size="25px" @click="likeFile(image)" />
-            <van-icon name="close" class="close" color="lightyellow" size="25px" @click="delFile(image)" />
-            <img class="image" v-if="image.type == 'P'" :key="index" :src="image.thumbnail" :data-source="image.source" :alt="image.title">
-            <img class="image" v-if="image.type == 'V'" :key="index" :src="image.thumbnail" :alt="image.title" @click="playVideo(image)">
-          </div>
+    <van-checkbox-group v-model="imageSelected" ref="imageSelected">
+      <viewer :options="options" :images="images"
+        @inited="inited"
+        class="viewer" ref="viewer"
+      >
+        <template slot-scope="scope">
+          <template v-for="(image, index) in scope.images">
+            <div class="file" :key="index">
+              <van-icon v-if="image.isliked" name="like" class="like" color="orangered" size="25px" @click="likeFile(image)" />
+              <van-icon v-else name="like" class="like" color="white" size="25px" @click="likeFile(image)" />
+              <van-icon name="close" class="close" color="lightyellow" size="25px" @click="delFile(image)" />
+              <van-checkbox v-if="deletev===1" icon-size="22px" :name="image.id" class="select-image"></van-checkbox>
+              <img class="image" v-if="image.type == 'P'" :key="index" :src="image.thumbnail" :data-source="image.source" :alt="image.title">
+              <img class="image" v-if="image.type == 'V'" :key="index" :src="image.thumbnail" :alt="image.title" @click="playVideo(image)">
+            </div>
+          </template>
         </template>
-      </template>
-    </viewer>
+      </viewer>
+    </van-checkbox-group>
     <van-popup v-model="showVideo">
       <video :src="videoSrc" controls="controls" loop="loop" autoplay>您的浏览器不支持video标签</video>
     </van-popup>
     <van-notice-bar left-icon="volume-o" :text="pageTexts" />
     <van-pagination v-model="page" :total-items="records" :items-per-page="perPage" :show-page-size="3" force-ellipses @change="changePage" />
+    <van-field v-if="deletev===1" name="checkboxGroup" center label="操作">
+      <template #input>
+        <van-button class="option" size="small" type="primary" @click="checkAll">全选</van-button>
+        <van-button class="option" size="small" type="info" @click="toggleAll">反选</van-button>
+        <van-button class="option" size="small" type="danger" @click="deleteSelected">删除</van-button>
+      </template>
+    </van-field>
     <van-radio-group v-model="mType" class="MType">
       <van-cell-group>
         <van-cell title="图片和视频" clickable @click="changeType(mType = '')">
@@ -132,7 +142,7 @@ lsEndDateTime = (lsEndDateTime ? JSON.parse(lsEndDateTime) : '')
 
 // create an axios instance
 const service = axios.create({
-  baseURL: window.CONFIG && window.CONFIG.apiHost || 'http://192.168.1.101:8081/',
+  baseURL: window.CONFIG && window.CONFIG.apiHost || 'http://192.168.3.111:8081/',
   withCredentials: true, // 跨域请求时发送 cookies
   timeout: 10000 // request timeout
 })
@@ -184,8 +194,9 @@ export default {
       perPage: PER_PAGE,
       mType: '',
       like: -1,
-      delete: 0,
+      deletev: 0,
       checkboxArr: [],
+      imageSelected: [],
       apiHost: '',
       dealPics: '',
       dealVideos: '',
@@ -259,7 +270,7 @@ export default {
     initSet() {
       this.mType = ''
       this.like = -1
-      this.delete = 0
+      this.deletev = 0
       this.checkboxArr = []
       this.page = 1
       this.perPage = PER_PAGE
@@ -293,12 +304,41 @@ export default {
     showDelete() {
       this.$refs.checkboxDelete.toggle()
       if (this.checkboxArr.includes('delete')) {
-        this.delete = 0
+        this.deletev = 0
       } else {
-        this.delete = 1
+        this.deletev = 1
       }
-      ls.setItem('viewer:MyViewer:delete', JSON.stringify(this.delete))
+      ls.setItem('viewer:MyViewer:delete', JSON.stringify(this.deletev))
       this.getFileList()
+    },
+
+    checkAll() {
+      this.$refs.imageSelected.toggleAll(true);
+    },
+
+    toggleAll() {
+      this.$refs.imageSelected.toggleAll();
+    },
+
+    deleteSelected() {
+      console.log(this.imageSelected)
+      Dialog.confirm({
+        title: '确认删除',
+        message: '确定要删除选中文件吗？此操作会删除磁盘文件，不可恢复！！！',
+      }).then(() => {
+        for (let i = 0; i < this.imageSelected.length; i++) {
+          service({
+            url: '/api/real-delete/' + this.imageSelected[i],
+            method: 'delete'
+          }).then(response => {
+            if (response.code === 10000) {
+              this.getFileList()
+            }
+          })
+        }
+      }).catch(() => {
+        // on cancel
+      })
     },
 
     setMinDateTime() {
@@ -323,7 +363,7 @@ export default {
       startDateTime = startDateTime || this.startDateTime
       endDateTime = endDateTime || this.endDateTime
       like = like || this.like
-      deletev = deletev || this.delete
+      deletev = deletev || this.deletev
 
       let query = {
         'type': mType,
@@ -392,21 +432,22 @@ export default {
     },
 
     delFile(image) {
+      let tips = image.isdeleted === 1 ? '恢复' : '标记'
       Dialog.confirm({
-        title: '标记删除',
-        message: '确定要标记删除吗？',
+        title: tips + '删除',
+        message: '确定要' + tips + '删除吗？',
       }).then(() => {
-          service({
-            url: '/api/delete/' + image.id,
-            method: 'put',
-            params: {isdeleted: image.isdeleted}
-          }).then(response => {
-            if (response.code === 10000) {
-              this.getFileList()
-            }
-          })
-        }).catch(() => {
-          // on cancel
+        service({
+          url: '/api/delete/' + image.id,
+          method: 'put',
+          params: {isdeleted: image.isdeleted}
+        }).then(response => {
+          if (response.code === 10000) {
+            this.getFileList()
+          }
+        })
+      }).catch(() => {
+        // on cancel
       })
     }
   },
@@ -426,7 +467,7 @@ export default {
         setTimeout(() => {
           this.mType = lsMType
           this.like = lsLike
-          this.delete = lsDelete
+          this.deletev = lsDelete
           this.page = lsPage
           this.perPage = lsPerPage
           this.startDateTime = lsStartDateTime
@@ -453,6 +494,11 @@ export default {
   right: 8px;
   top: 8px;
 }
+.select-image {
+  position: absolute;
+  left: 8px;
+  top: 8px;
+}
 .image {
   width: 160px;
   height: 160px;
@@ -463,5 +509,8 @@ export default {
 }
 .MType {
   text-align: left;
+}
+.option {
+  margin-left: 10px;
 }
 </style>
