@@ -43,11 +43,16 @@
         </van-cell>
       </van-cell-group>
     </van-radio-group>
-    <van-checkbox-group v-model="likeArr" class="MType">
+    <van-checkbox-group v-model="checkboxArr" class="MType">
       <van-cell-group>
         <van-cell title="显示喜欢" clickable @click="showLike">
           <template #right-icon>
-            <van-checkbox name="1" ref="checkboxes" />
+            <van-checkbox name="like" ref="checkboxLike" />
+          </template>
+        </van-cell>
+        <van-cell title="显示已删除" clickable @click="showDelete">
+          <template #right-icon>
+            <van-checkbox name="delete" ref="checkboxDelete" />
           </template>
         </van-cell>
       </van-cell-group>
@@ -82,7 +87,7 @@ import Vue from 'vue'
 Vue.use(Viewer)
 
 import 'vant/lib/index.css'
-import { Icon, NoticeBar, Pagination, Field, Button, Popup, DatetimePicker, RadioGroup, Radio, CellGroup, Cell, Checkbox, CheckboxGroup } from 'vant'
+import { Icon, NoticeBar, Pagination, Field, Button, Popup, DatetimePicker, RadioGroup, Radio, CellGroup, Cell, Checkbox, CheckboxGroup, Dialog } from 'vant'
 Vue.use(Icon)
 Vue.use(NoticeBar)
 Vue.use(Pagination)
@@ -96,6 +101,7 @@ Vue.use(CellGroup)
 Vue.use(Cell)
 Vue.use(Checkbox)
 Vue.use(CheckboxGroup)
+Vue.use(Dialog)
 
 import moment from 'moment'
 
@@ -108,6 +114,9 @@ lsMType = (lsMType ? JSON.parse(lsMType) : '')
 
 let lsLike = ls.getItem('viewer:MyViewer:like')
 lsLike = (lsLike ? JSON.parse(lsLike) : -1)
+
+let lsDelete = ls.getItem('viewer:MyViewer:delete')
+lsDelete = (lsDelete ? JSON.parse(lsDelete) : 0)
 
 let lsPage = ls.getItem('viewer:MyViewer:page')
 lsPage = (lsPage ? JSON.parse(lsPage) : 1)
@@ -123,7 +132,7 @@ lsEndDateTime = (lsEndDateTime ? JSON.parse(lsEndDateTime) : '')
 
 // create an axios instance
 const service = axios.create({
-  baseURL: window.CONFIG && window.CONFIG.apiHost || 'http://192.168.3.111:8081/',
+  baseURL: window.CONFIG && window.CONFIG.apiHost || 'http://192.168.1.101:8081/',
   withCredentials: true, // 跨域请求时发送 cookies
   timeout: 10000 // request timeout
 })
@@ -175,7 +184,8 @@ export default {
       perPage: PER_PAGE,
       mType: '',
       like: -1,
-      likeArr: [],
+      delete: 0,
+      checkboxArr: [],
       apiHost: '',
       dealPics: '',
       dealVideos: '',
@@ -249,7 +259,8 @@ export default {
     initSet() {
       this.mType = ''
       this.like = -1
-      this.likeArr = []
+      this.delete = 0
+      this.checkboxArr = []
       this.page = 1
       this.perPage = PER_PAGE
       this.startDateTime = ''
@@ -269,13 +280,24 @@ export default {
     },
 
     showLike() {
-      this.$refs.checkboxes.toggle()
-      if (this.likeArr.length == 0) {
-        this.like = 1
+      this.$refs.checkboxLike.toggle()
+      if (this.checkboxArr.includes('like')) {
+        this.like = 0
       } else {
-        this.like = -1
+        this.like = 1
       }
       ls.setItem('viewer:MyViewer:like', JSON.stringify(this.like))
+      this.getFileList()
+    },
+
+    showDelete() {
+      this.$refs.checkboxDelete.toggle()
+      if (this.checkboxArr.includes('delete')) {
+        this.delete = 0
+      } else {
+        this.delete = 1
+      }
+      ls.setItem('viewer:MyViewer:delete', JSON.stringify(this.delete))
       this.getFileList()
     },
 
@@ -294,13 +316,14 @@ export default {
     },
 
     // 获取文件列表
-    getFileList(mType, page, perPage, startDateTime, endDateTime, like) {
+    getFileList(mType, page, perPage, startDateTime, endDateTime, like, deletev) {
       mType = mType || this.mType
       page = page || this.page
       perPage = perPage || this.perPage
       startDateTime = startDateTime || this.startDateTime
       endDateTime = endDateTime || this.endDateTime
       like = like || this.like
+      deletev = deletev || this.delete
 
       let query = {
         'type': mType,
@@ -308,7 +331,8 @@ export default {
         'max-date-time': endDateTime,
         'per-page': perPage,
         'page': page,
-        'like': like
+        'like': like,
+        'delete': deletev
       }
       service({
         url: this.apiHost + 'api/filelist',
@@ -345,6 +369,7 @@ export default {
               id: response.data.list[i].id,
               type: mType,
               isliked: response.data.list[i].isliked,
+              isdeleted: response.data.list[i].isdeleted,
               title: response.data.list[i].datetime,
               thumbnail: thumbnail,
               source: source
@@ -367,7 +392,22 @@ export default {
     },
 
     delFile(image) {
-      console.log('del', image)
+      Dialog.confirm({
+        title: '标记删除',
+        message: '确定要标记删除吗？',
+      }).then(() => {
+          service({
+            url: '/api/delete/' + image.id,
+            method: 'put',
+            params: {isdeleted: image.isdeleted}
+          }).then(response => {
+            if (response.code === 10000) {
+              this.getFileList()
+            }
+          })
+        }).catch(() => {
+          // on cancel
+      })
     }
   },
   mounted() {
@@ -382,10 +422,11 @@ export default {
         this.sourcePics = response.data.sourcepics
         this.sourceVideos = response.data.sourcevideos
 
-        this.getFileList(lsMType, lsPage, lsPerPage, lsStartDateTime, lsEndDateTime, lsLike)
+        this.getFileList(lsMType, lsPage, lsPerPage, lsStartDateTime, lsEndDateTime, lsLike, lsDelete)
         setTimeout(() => {
           this.mType = lsMType
           this.like = lsLike
+          this.delete = lsDelete
           this.page = lsPage
           this.perPage = lsPerPage
           this.startDateTime = lsStartDateTime

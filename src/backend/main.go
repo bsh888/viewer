@@ -65,11 +65,12 @@ type (
 	}
 
 	FileModel struct {
-		ID       int    `json:"id"`
-		Path     string `json:"path"`
-		Type     string `json:"type"`
-		DateTime string `json:"datetime"`
-		IsLiked  int    `json:"isliked"`
+		ID        int    `json:"id"`
+		Path      string `json:"path"`
+		Type      string `json:"type"`
+		DateTime  string `json:"datetime"`
+		IsLiked   int    `json:"isliked"`
+		IsDeleted int    `json:"isdeleted"`
 	}
 )
 
@@ -168,6 +169,7 @@ func (s *Server) InitRouter(h *Handler) *gin.Engine {
 		apiGroup.GET("/config", h.HandlerApiConfig(s.config))
 		apiGroup.GET("/filelist", h.HandlerApiFileList)
 		apiGroup.PUT("/like/:id", h.HandlerApiLike)
+		apiGroup.PUT("/delete/:id", h.HandlerApiDelete)
 	}
 
 	return router
@@ -237,7 +239,7 @@ func (m *Model) InsertFileData(path, myType, datetime string) (id int64, err err
 }
 
 // 获取文件列表
-func (m *Model) FileList(myType, minDateTime, maxDateTime string, page, perPage, like int) (fileModels []FileModel, count int, err error) {
+func (m *Model) FileList(myType, minDateTime, maxDateTime string, page, perPage, like, delete int) (fileModels []FileModel, count int, err error) {
 	// 条件查询
 	where := "1 = 1"
 	if myType != "" {
@@ -245,6 +247,9 @@ func (m *Model) FileList(myType, minDateTime, maxDateTime string, page, perPage,
 	}
 	if like != -1 {
 		where = fmt.Sprintf("%s AND isliked = %d", where, like)
+	}
+	if delete != -1 {
+		where = fmt.Sprintf("%s AND isdeleted = %d", where, delete)
 	}
 	if minDateTime != "" {
 		where = fmt.Sprintf("%s AND datetime >= '%s'", where, minDateTime)
@@ -273,7 +278,7 @@ func (m *Model) FileList(myType, minDateTime, maxDateTime string, page, perPage,
 		perPage = 10
 	}
 	from := (page - 1) * perPage
-	sql = fmt.Sprintf("SELECT id, path, type, datetime, isliked FROM file WHERE %s ORDER BY datetime DESC LIMIT %d, %d", where, from, perPage)
+	sql = fmt.Sprintf("SELECT id, path, type, datetime, isliked, isdeleted FROM file WHERE %s ORDER BY datetime DESC LIMIT %d, %d", where, from, perPage)
 	// fmt.Println(sql)
 
 	row, err = m.db.Query(sql)
@@ -283,17 +288,18 @@ func (m *Model) FileList(myType, minDateTime, maxDateTime string, page, perPage,
 	defer row.Close()
 
 	for row.Next() {
-		var id, isliked int
+		var id, isliked, isdeleted int
 		var path string
 		var myType string
 		var dateTime string
-		row.Scan(&id, &path, &myType, &dateTime, &isliked)
+		row.Scan(&id, &path, &myType, &dateTime, &isliked, &isdeleted)
 		fileModel := FileModel{
-			ID:       id,
-			Path:     path,
-			Type:     myType,
-			DateTime: dateTime,
-			IsLiked:  isliked,
+			ID:        id,
+			Path:      path,
+			Type:      myType,
+			DateTime:  dateTime,
+			IsLiked:   isliked,
+			IsDeleted: isdeleted,
 		}
 		fileModels = append(fileModels, fileModel)
 	}
@@ -317,6 +323,35 @@ func (m *Model) Like(id, isliked int) (int64, error) {
 	}
 
 	res, err := stmt.Exec(isliked, id)
+	if err != nil {
+		return affectedRows, err
+	}
+
+	affectedRows, err = res.RowsAffected()
+
+	if err != nil {
+		return affectedRows, err
+	}
+
+	return affectedRows, nil
+}
+
+// 删除
+func (m *Model) Delete(id, isdeleted int) (int64, error) {
+	var affectedRows int64
+
+	if isdeleted == 0 {
+		isdeleted = 1
+	} else {
+		isdeleted = 0
+	}
+
+	stmt, err := m.db.Prepare("UPDATE file SET isdeleted = ? WHERE id = ?")
+	if err != nil {
+		return affectedRows, err
+	}
+
+	res, err := stmt.Exec(isdeleted, id)
 	if err != nil {
 		return affectedRows, err
 	}
@@ -473,6 +508,7 @@ func (h *Handler) HandlerApiFileList(c *gin.Context) {
 
 	myType := c.Query("type")
 	like := c.Query("like")
+	delete := c.Query("delete")
 	minDateTime := c.Query("min-date-time")
 	maxDateTime := c.Query("max-date-time")
 	page := c.Query("page")
@@ -480,8 +516,9 @@ func (h *Handler) HandlerApiFileList(c *gin.Context) {
 	pageInt, _ := strconv.Atoi(page)
 	perPageInt, _ := strconv.Atoi(perPage)
 	likeInt, _ := strconv.Atoi(like)
+	deleteInt, _ := strconv.Atoi(delete)
 
-	fileModels, count, err := h.model.FileList(myType, minDateTime, maxDateTime, pageInt, perPageInt, likeInt)
+	fileModels, count, err := h.model.FileList(myType, minDateTime, maxDateTime, pageInt, perPageInt, likeInt, deleteInt)
 
 	type Res struct {
 		Count int         `json:"count"`
@@ -521,6 +558,32 @@ func (h *Handler) HandlerApiLike(c *gin.Context) {
 	r.Data = rows
 	if err != nil {
 		r.Code = 10004
+		r.Msg = err.Error()
+		c.JSON(http.StatusOK, r)
+		return
+	}
+
+	c.JSON(http.StatusOK, r)
+	return
+}
+
+// 删除
+func (h *Handler) HandlerApiDelete(c *gin.Context) {
+	r := Result{
+		Code: 10000,
+		Msg:  "",
+	}
+
+	idStr := c.Param("id")
+	id, _ := strconv.Atoi(idStr)
+	isdeletedStr := c.Query("isdeleted")
+	isdeleted, _ := strconv.Atoi(isdeletedStr)
+
+	rows, err := h.model.Delete(id, isdeleted)
+
+	r.Data = rows
+	if err != nil {
+		r.Code = 10005
 		r.Msg = err.Error()
 		c.JSON(http.StatusOK, r)
 		return
