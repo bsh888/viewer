@@ -14,7 +14,7 @@
               <van-icon v-if="image.isliked" name="like" class="like" color="orangered" size="25px" @click="likeFile(image)" />
               <van-icon v-else name="like" class="like" color="white" size="25px" @click="likeFile(image)" />
               <van-icon name="close" class="close" color="lightyellow" size="25px" @click="delFile(image)" />
-              <van-checkbox v-if="deletev===1" icon-size="22px" :name="image.id" class="select-image"></van-checkbox>
+              <van-checkbox v-if="deletev===1" icon-size="22px" :name="image" class="select-image"></van-checkbox>
               <img class="image" v-if="image.type == 'P'" :key="index" :src="image.thumbnail" :data-source="image.source" :alt="image.title">
               <img class="image" v-if="image.type == 'V'" :key="index" :src="image.thumbnail" :alt="image.title" @click="playVideo(image)">
             </div>
@@ -85,6 +85,12 @@
     <van-popup v-model="showMaxDateTime" round position="bottom">
       <van-datetime-picker v-model="maxDateTime" type="datetime" title="选择年月日" :min-date="minDate" :max-date="maxDate" @confirm="setMaxDateTime" @cancel="showMaxDateTime = false" />
     </van-popup>
+    <van-field name="checkboxGroup" center label="初始化">
+      <template #input>
+        <van-button class="option" size="small" type="danger" @click="initSystem">启动</van-button>   
+      </template>
+    </van-field>
+    <van-progress :percentage="50" />
   </div>
 </template>
 
@@ -97,7 +103,7 @@ import Vue from 'vue'
 Vue.use(Viewer)
 
 import 'vant/lib/index.css'
-import { Icon, NoticeBar, Pagination, Field, Button, Popup, DatetimePicker, RadioGroup, Radio, CellGroup, Cell, Checkbox, CheckboxGroup, Dialog } from 'vant'
+import { Icon, NoticeBar, Pagination, Field, Button, Popup, DatetimePicker, RadioGroup, Radio, CellGroup, Cell, Checkbox, CheckboxGroup, Dialog, Notify, Progress } from 'vant'
 Vue.use(Icon)
 Vue.use(NoticeBar)
 Vue.use(Pagination)
@@ -112,6 +118,8 @@ Vue.use(Cell)
 Vue.use(Checkbox)
 Vue.use(CheckboxGroup)
 Vue.use(Dialog)
+Vue.use(Notify)
+Vue.use(Progress)
 
 import moment from 'moment'
 
@@ -267,6 +275,10 @@ export default {
       }
     },
 
+    initSystem() {
+      
+    },
+
     initSet() {
       this.mType = ''
       this.like = -1
@@ -321,20 +333,24 @@ export default {
     },
 
     deleteSelected() {
-      console.log(this.imageSelected)
       Dialog.confirm({
         title: '确认删除',
         message: '确定要删除选中文件吗？此操作会删除磁盘文件，不可恢复！！！',
       }).then(() => {
         for (let i = 0; i < this.imageSelected.length; i++) {
-          service({
-            url: '/api/real-delete/' + this.imageSelected[i],
-            method: 'delete'
-          }).then(response => {
-            if (response.code === 10000) {
-              this.getFileList()
-            }
-          })
+          (function(i, _this) {
+            setTimeout(() => {
+              service({
+                url: '/api/real-delete/' + _this.imageSelected[i].id,
+                method: 'delete'
+              }).then(response => {
+                if (response.code === 10000) {
+                  Notify({ type: 'danger', duration: 500, message: _this.imageSelected[i].path + '删除成功' })
+                  _this.getFileList()
+                }
+              })
+            }, 500 * i)
+          }(i, this))
         }
       }).catch(() => {
         // on cancel
@@ -412,7 +428,8 @@ export default {
               isdeleted: response.data.list[i].isdeleted,
               title: response.data.list[i].datetime,
               thumbnail: thumbnail,
-              source: source
+              source: source,
+              path: response.data.list[i].path
             })
           }
         }
@@ -426,13 +443,18 @@ export default {
         params: {isliked: image.isliked}
       }).then(response => {
         if (response.code === 10000) {
+          if (image.isliked == 1) {
+            Notify({ type: 'warning', duration: 1000, message: image.path + '已取消喜欢' })
+          } else {
+            Notify({ type: 'success', duration: 1000, message: image.path + '已喜欢' })
+          }
           this.getFileList()
         }
       })
     },
 
     delFile(image) {
-      let tips = image.isdeleted === 1 ? '恢复' : '标记'
+      let tips = image.isdeleted === 1 ? '取消' : '标记'
       Dialog.confirm({
         title: tips + '删除',
         message: '确定要' + tips + '删除吗？',
@@ -443,6 +465,11 @@ export default {
           params: {isdeleted: image.isdeleted}
         }).then(response => {
           if (response.code === 10000) {
+            if (image.isdeleted == 1) {
+              Notify({ type: 'success', duration: 1000, message: image.path + '已取消标记删除' })
+            } else {
+              Notify({ type: 'warning', duration: 1000, message: image.path + '已标记删除' })
+            }
             this.getFileList()
           }
         })

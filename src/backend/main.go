@@ -375,7 +375,7 @@ func (m *Model) RealDelete(toID int) (int64, error) {
 	var myType string
 	var dateTime string
 
-	err := m.db.QueryRow("SELECT id, path, type, datetime, isliked, isdeleted FROM file WHERE id = ?", toID).Scan(&id, &path, &myType, &dateTime, &isliked, &isdeleted)
+	err := m.db.QueryRow("SELECT id, path, type, datetime, isliked, isdeleted FROM file WHERE isdeleted = 1 AND id = ?", toID).Scan(&id, &path, &myType, &dateTime, &isliked, &isdeleted)
 	if err != nil {
 		return affectedRows, err
 	}
@@ -384,23 +384,45 @@ func (m *Model) RealDelete(toID int) (int64, error) {
 		return affectedRows, errors.New("没有此记录")
 	}
 
-	fmt.Println(id, myType, path, *m.config)
+	stmt, err := m.db.Prepare("DELETE FROM file WHERE id = ?")
+	if err != nil {
+		return affectedRows, err
+	}
 
-	// stmt, err := m.db.Prepare("DELETE FROM file WHERE id = ?")
-	// if err != nil {
-	// 	return affectedRows, err
-	// }
+	res, err := stmt.Exec(id)
+	if err != nil {
+		return affectedRows, err
+	}
 
-	// res, err := stmt.Exec(id)
-	// if err != nil {
-	// 	return affectedRows, err
-	// }
+	affectedRows, err = res.RowsAffected()
 
-	// affectedRows, err = res.RowsAffected()
+	if err != nil {
+		return affectedRows, err
+	}
 
-	// if err != nil {
-	// 	return affectedRows, err
-	// }
+	// 删除文件
+	if affectedRows == 1 {
+		var deailFile, sourceFile string
+		switch myType {
+		case "P":
+			deailFile = fmt.Sprintf("%s/%s", m.config.DealPics, path)
+			sourceFile = fmt.Sprintf("%s/%s", m.config.SourcePics, path)
+			break
+		case "V":
+			deailFile = fmt.Sprintf("%s/%s", m.config.DealVideos, path)
+			sourceFile = fmt.Sprintf("%s/%s", m.config.SourceVideos, strings.Replace(path, ".jpg", ".mp4", -1))
+			break
+		}
+		if deailFile != "" && sourceFile != "" {
+			if _, err := os.Stat(deailFile); err == nil {
+				if err := os.Remove(deailFile); err == nil {
+					if _, err := os.Stat(sourceFile); err == nil {
+						os.Remove(sourceFile)
+					}
+				}
+			}
+		}
+	}
 
 	return affectedRows, nil
 }
