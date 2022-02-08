@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"net"
@@ -13,6 +14,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	_ "github.com/mattn/go-sqlite3"
@@ -42,6 +44,7 @@ type (
 		DealVideos   string `yaml:"dealvideos"`
 		SourcePics   string `yaml:"sourcepics"`
 		SourceVideos string `yaml:"sourcevideos"`
+		Password     string `yaml:"password"`
 		DBFile       string `yaml:"dbfile"`
 	}
 
@@ -166,6 +169,7 @@ func (s *Server) InitRouter(h *Handler) *gin.Engine {
 	apiGroup := router.Group("/api")
 	apiGroup.Use()
 	{
+		apiGroup.GET("/init-system", h.HandlerApiInitSystem)
 		apiGroup.GET("/config", h.HandlerApiConfig(s.config))
 		apiGroup.GET("/filelist", h.HandlerApiFileList)
 		apiGroup.PUT("/like/:id", h.HandlerApiLike)
@@ -184,6 +188,28 @@ func (m *Model) OpenDB() (err error) {
 	}
 	m.db = db
 	return nil
+}
+
+// 初始化系统
+func (m *Model) InitSystem(password string) chan string {
+	message := make(chan string, 1)
+
+	go func() {
+		defer func(message chan string) {
+			if !isStringChanClosed(message) {
+				close(message)
+			}
+		}(message)
+
+		message <- password
+		message <- m.config.Password
+		for i := 0; i < 5; i++ {
+			message <- strconv.Itoa(i)
+			time.Sleep(time.Second * 1)
+		}
+	}()
+
+	return message
 }
 
 // 初始化数据库表
@@ -478,6 +504,25 @@ func (h *Handler) HandlerApiConfig(config *Config) gin.HandlerFunc {
 	return gin.HandlerFunc(fn)
 }
 
+// 初始化系统
+func (h *Handler) HandlerApiInitSystem(c *gin.Context) {
+	c.Writer.Header().Set("Content-Type", "text/event-stream")
+	c.Writer.Header().Set("Cache-Control", "no-cache")
+
+	password := c.Query("password")
+	message := h.model.InitSystem(password)
+
+	c.Stream(func(w io.Writer) bool {
+		if msg, ok := <-message; ok {
+			// fmt.Printf("%#v\n", msg)
+			c.SSEvent("message", msg)
+			return true
+		}
+		c.SSEvent("close", "")
+		return false
+	})
+}
+
 // 初始化数据库操作入口
 func (h *Handler) HandlerDBTable(c *gin.Context) {
 	r := Result{
@@ -726,4 +771,14 @@ func getClientIp() (string, error) {
 	}
 
 	return "", errors.New("Can not find the client ip address!")
+}
+
+func isStringChanClosed(ch <-chan string) bool {
+	select {
+	case <-ch:
+		return true
+	default:
+	}
+
+	return false
 }

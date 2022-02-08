@@ -124,6 +124,7 @@ Vue.use(Progress)
 import moment from 'moment'
 
 const PER_PAGE = window.CONFIG && window.CONFIG.perPage || 20
+const BASE_URL = window.CONFIG && window.CONFIG.apiHost || 'http://192.168.3.111:8081/'
 
 let ls = window.localStorage
 
@@ -150,7 +151,7 @@ lsEndDateTime = (lsEndDateTime ? JSON.parse(lsEndDateTime) : '')
 
 // create an axios instance
 const service = axios.create({
-  baseURL: window.CONFIG && window.CONFIG.apiHost || 'http://192.168.3.111:8081/',
+  baseURL: BASE_URL,
   withCredentials: true, // 跨域请求时发送 cookies
   timeout: 10000 // request timeout
 })
@@ -191,6 +192,7 @@ export default {
   },
   data() {
     return {
+      loading: false,
       page: 1,
       sPage: '',
       setPagePlaceholder:'',
@@ -276,7 +278,20 @@ export default {
     },
 
     initSystem() {
-      
+      let obj = new EventSource(BASE_URL + 'api/init-system?password=123')
+      this.addEventListener(obj)
+    },
+
+    addEventListener(obj) {
+      obj.addEventListener('message', (event) => {
+        this.loading = true
+        console.log(JSON.stringify(event.data))
+      })
+      obj.addEventListener('close', () => {
+        console.log('closed')
+        this.loading = false
+        obj.close()
+      })
     },
 
     initSet() {
@@ -291,6 +306,7 @@ export default {
 
       ls.removeItem('viewer:MyViewer:mType')
       ls.removeItem('viewer:MyViewer:like')
+      ls.removeItem('viewer:MyViewer:delete')
       ls.removeItem('viewer:MyViewer:page')
       ls.removeItem('viewer:MyViewer:perpage')
       ls.removeItem('viewer:MyViewer:startDateTime')

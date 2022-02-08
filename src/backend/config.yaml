@@ -6,4 +6,5 @@ dealpics: ../../dealpics
 dealvideos: ../../dealvideos
 sourcepics: ../../sourcepics
 sourcevideos: ../../sourcevideos
+password: viewer
 dbfile: ./file.db
