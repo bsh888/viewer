@@ -85,12 +85,12 @@
     <van-popup v-model="showMaxDateTime" round position="bottom">
       <van-datetime-picker v-model="maxDateTime" type="datetime" title="选择年月日" :min-date="minDate" :max-date="maxDate" @confirm="setMaxDateTime" @cancel="showMaxDateTime = false" />
     </van-popup>
-    <van-field name="checkboxGroup" center label="初始化">
-      <template #input>
-        <van-button class="option" size="small" type="danger" @click="initSystem">启动</van-button>   
+    <van-field name="checkboxGroup" v-model="password" center clearable label="初始化" placeholder="请输入密码启动初始化">
+      <template #button>
+        <van-button class="option" size="small" type="danger" :loading="loading" @click="initSystem">启动</van-button>   
       </template>
     </van-field>
-    <van-progress :percentage="50" />
+    <van-progress v-if="percentage>0" :percentage="percentage" />
   </div>
 </template>
 
@@ -193,6 +193,8 @@ export default {
   data() {
     return {
       loading: false,
+      password: '',
+      percentage: 0,
       page: 1,
       sPage: '',
       setPagePlaceholder:'',
@@ -278,14 +280,24 @@ export default {
     },
 
     initSystem() {
-      let obj = new EventSource(BASE_URL + 'api/init-system?password=123')
-      this.addEventListener(obj)
+      Dialog.confirm({
+        title: '确认启动',
+        message: '确定要执行系统初始化吗？注意：会重建磁盘文件及数据库表数据',
+      }).then(() => {
+        let obj = new EventSource(BASE_URL + 'api/init-system?password=' + this.password)
+        this.addEventListener(obj)
+      }).catch(() => {
+        // on cancel
+      })
     },
 
     addEventListener(obj) {
       obj.addEventListener('message', (event) => {
         this.loading = true
-        console.log(JSON.stringify(event.data))
+        let data = event.data.split('-==-')
+        this.percentage = data[0]
+        this.password = data[1]
+        // console.log(JSON.stringify(event.data))
       })
       obj.addEventListener('close', () => {
         console.log('closed')
@@ -448,6 +460,8 @@ export default {
               path: response.data.list[i].path
             })
           }
+        } else {
+          Notify({ type: 'warning', duration: 3000, message: '执行失败: ' + response.msg })
         }
       })
     },
@@ -465,6 +479,8 @@ export default {
             Notify({ type: 'success', duration: 1000, message: image.path + '已喜欢' })
           }
           this.getFileList()
+        } else {
+          Notify({ type: 'warning', duration: 3000, message: '执行失败: ' + response.msg })
         }
       })
     },
@@ -487,6 +503,8 @@ export default {
               Notify({ type: 'warning', duration: 1000, message: image.path + '已标记删除' })
             }
             this.getFileList()
+          } else {
+            Notify({ type: 'warning', duration: 3000, message: '执行失败: ' + response.msg })
           }
         })
       }).catch(() => {
@@ -516,6 +534,8 @@ export default {
           this.startDateTime = lsStartDateTime
           this.endDateTime = lsEndDateTime
         }, 300)
+      } else {
+        Notify({ type: 'warning', duration: 3000, message: '执行失败: ' + response.msg })
       }
     })
   }

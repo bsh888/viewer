@@ -159,13 +159,6 @@ func (s *Server) InitRouter(h *Handler) *gin.Engine {
 	router.Static("/sourcevideos", s.config.SourceVideos)
 	router.StaticFile("/favicon.ico", s.config.Static+"/favicon.ico")
 
-	dbGroup := router.Group("/db")
-	dbGroup.Use()
-	{
-		dbGroup.GET("/table", h.HandlerDBTable)
-		dbGroup.GET("/data", h.HandlerDBData(s.config))
-	}
-
 	apiGroup := router.Group("/api")
 	apiGroup.Use()
 	{
@@ -201,19 +194,43 @@ func (m *Model) InitSystem(password string) chan string {
 			}
 		}(message)
 
-		message <- password
-		message <- m.config.Password
-		for i := 0; i < 5; i++ {
-			message <- strconv.Itoa(i)
-			time.Sleep(time.Second * 1)
+		percentage := 1
+		split := "-==-"
+
+		if password != m.config.Password {
+			message <- fmt.Sprintf("%d%s密码错误，请重新输入！", percentage, split)
+			return
 		}
+
+		// 重建数据库表
+		err := m.initDB()
+		if err != nil {
+			message <- fmt.Sprintf("%d%s重建数据库表失败：%s", percentage, split, err.Error())
+			return
+		}
+		message <- fmt.Sprintf("%d%s重建数据库表成功！", percentage, split)
+		time.Sleep(time.Second * 1)
+
+		dir := m.config.DealPics
+		myType := "P"
+		filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+			return m.initDBData(message, dir, myType, path, split, percentage, info)
+		})
+
+		dir = m.config.DealVideos
+		myType = "V"
+		filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+			return m.initDBData(message, dir, myType, path, split, percentage, info)
+		})
+
+		message <- fmt.Sprintf("%d%s系统初始化完毕！", 100, split)
 	}()
 
 	return message
 }
 
 // 初始化数据库表
-func (m *Model) InitDB() (err error) {
+func (m *Model) initDB() (err error) {
 	sql := `
 DROP TABLE IF EXISTS file;
 `
@@ -241,6 +258,39 @@ CREATE TABLE IF NOT EXISTS file (
 
 	stmt.Exec()
 
+	return nil
+}
+
+func (m *Model) initDBData(message chan string, dir, myType, path, split string, percentage int, info os.FileInfo) error {
+	name := info.Name()
+	if !info.IsDir() && !strings.HasPrefix(name, ".") {
+		first := len(dir) + 1
+		names := strings.Split(name, "_")
+		if len(names) < 2 {
+			errStr := fmt.Sprintf("文件非法 Path:%s", path)
+			log.Println(errStr)
+			return nil
+		}
+		dateField := names[0]
+		timeField := names[1]
+		if len(dateField) != 8 || len(timeField) < 6 {
+			errStr := fmt.Sprintf("文件时间非法: Path:%s Date:%s Time:%s", path, dateField, timeField)
+			log.Println(errStr)
+			return nil
+		}
+		if name[len(name)-4:] != ".jpg" {
+			return nil
+		}
+		datetime := fmt.Sprintf("%s-%s-%s %s:%s:%s", dateField[:4], dateField[4:6], dateField[6:8], timeField[:2], timeField[2:4], timeField[4:6])
+		id, err := m.InsertFileData(path[first:], myType, datetime)
+		if err != nil {
+			log.Println(err.Error())
+			return nil
+		}
+		percentage = int(id)
+		message <- fmt.Sprintf("%d%s写入数据：ID:%d Path:%s", percentage, split, id, path)
+		time.Sleep(time.Microsecond * 100000)
+	}
 	return nil
 }
 
@@ -521,89 +571,6 @@ func (h *Handler) HandlerApiInitSystem(c *gin.Context) {
 		c.SSEvent("close", "")
 		return false
 	})
-}
-
-// 初始化数据库操作入口
-func (h *Handler) HandlerDBTable(c *gin.Context) {
-	r := Result{
-		Code: 10000,
-		Msg:  "",
-	}
-
-	err := h.model.InitDB()
-	if err == nil {
-		c.JSON(http.StatusOK, r)
-		return
-	}
-
-	r.Code = 10001
-	r.Msg = err.Error()
-	c.JSON(http.StatusOK, r)
-	return
-}
-
-func (h *Handler) doDBData(dir, myType string, w http.ResponseWriter) error {
-	return filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
-		name := info.Name()
-		if !info.IsDir() && !strings.HasPrefix(name, ".") {
-			first := len(dir) + 1
-			names := strings.Split(name, "_")
-			if len(names) < 2 {
-				errStr := fmt.Sprintf("文件非法 Path:%s", path)
-				log.Println(errStr)
-				return nil
-			}
-			dateField := names[0]
-			timeField := names[1]
-			if len(dateField) != 8 || len(timeField) < 6 {
-				errStr := fmt.Sprintf("文件时间非法: Path:%s Date:%s Time:%s", path, dateField, timeField)
-				log.Println(errStr)
-				return nil
-			}
-			if name[len(name)-4:] != ".jpg" {
-				return nil
-			}
-			datetime := fmt.Sprintf("%s-%s-%s %s:%s:%s", dateField[:4], dateField[4:6], dateField[6:8], timeField[:2], timeField[2:4], timeField[4:6])
-			id, err := h.model.InsertFileData(path[first:], myType, datetime)
-			if err != nil {
-				log.Println(err.Error())
-				return nil
-			}
-
-			w.Write([]byte(fmt.Sprintf("<font face=\"verdana\" color=\"green\">ID:%d Path:%s</font><br/>\n", id, path)))
-			w.(http.Flusher).Flush()
-
-		}
-		return nil
-	})
-}
-
-func (h *Handler) HandlerDBData(config *Config) gin.HandlerFunc {
-	fn := func(c *gin.Context) {
-		r := Result{
-			Code: 10000,
-			Msg:  "",
-		}
-
-		w := c.Writer
-		header := w.Header()
-		header.Set("Transfer-Encoding", "chunked")
-		header.Set("Content-Type", "text/html")
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("<html><body>\n"))
-		w.(http.Flusher).Flush()
-
-		h.doDBData(config.DealPics, "P", w)
-		h.doDBData(config.DealVideos, "V", w)
-
-		w.Write([]byte("</body></html>\n"))
-		w.(http.Flusher).Flush()
-
-		c.JSON(http.StatusOK, r)
-		return
-	}
-
-	return gin.HandlerFunc(fn)
 }
 
 // 文件列表接口
