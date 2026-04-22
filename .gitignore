@@ -20,3 +20,5 @@ sourcepics
 sourcevideos
 src/frontend/node_modules
 src/backend/file.db
+src/backend/.idea/
+test/

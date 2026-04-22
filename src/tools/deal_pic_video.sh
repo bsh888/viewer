@@ -12,7 +12,7 @@ if [ $? -ne 0 ]; then
     echo "Please install ImageMagick"
     exit
 fi
-export FONT_MSYH="/System/Library/Fonts/msyh.ttc"
+export FONT_MSYH="/Library/Fonts/msyh.ttc"
 export MAGICK_HOME="$(dirname $(dirname "$convertBin"))"
 # export PATH="$MAGICK_HOME/bin:$PATH"
 # export DYLD_LIBRARY_PATH="$MAGICK_HOME/lib"

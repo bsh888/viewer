@@ -124,7 +124,7 @@ Vue.use(Progress)
 import moment from 'moment'
 
 const PER_PAGE = window.CONFIG && window.CONFIG.perPage || 20
-const BASE_URL = window.CONFIG && window.CONFIG.apiHost || 'http://192.168.3.111:8081/'
+const BASE_URL = window.CONFIG && window.CONFIG.apiHost || 'http://192.168.3.110:8081/'
 
 let ls = window.localStorage
 
